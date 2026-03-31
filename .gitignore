@@ -45,3 +45,11 @@ Thumbs.db
 # Midnight
 .midnight/
 *.compact.js
+
+# Sensitive files
+mnemonic.txt
+.test_wallet.txt
+.wallet_info.json
+.env
+*.key
+.service_pids.txt

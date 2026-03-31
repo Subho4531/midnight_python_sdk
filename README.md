@@ -36,8 +36,8 @@ pip install midnight-py
 Or for development:
 
 ```bash
-git clone https://github.com/yourusername/midnight-py
-cd midnight-py
+git clone https://github.com/Samrat25/midnight_python_sdk
+cd midnight_python_sdk
 pip install -e ".[dev]"
 ```
 
