@@ -1,0 +1,15 @@
+// Deploy with: midnight-py deploy contracts/ai_inference.compact
+pragma language_version >= 0.20.0;
+import CompactStandardLibrary;
+
+// AI Inference Results Storage
+// Simple counter to track number of inferences submitted
+// Note: Individual inference data is stored off-chain in receipts
+
+export ledger result_count: Counter;
+
+// Circuit to submit inference results
+// This just increments the counter - actual data is in the ZK proof
+export circuit submit_inference_result(): [] {
+    result_count.increment(1);
+}

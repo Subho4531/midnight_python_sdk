@@ -21,6 +21,12 @@ class ZKProof(BaseModel):
     public_outputs: dict[str, Any] = Field(default_factory=dict)
     circuit_id: str
     generated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    @property
+    def proof_hash(self) -> str:
+        """Compute SHA256 hash of the proof"""
+        import hashlib
+        return hashlib.sha256(self.proof.encode()).hexdigest()
 
 
 class TransactionResult(BaseModel):

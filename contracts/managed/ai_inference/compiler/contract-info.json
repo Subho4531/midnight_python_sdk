@@ -1,0 +1,19 @@
+{
+  "circuits": [
+    {
+      "name": "submit_inference_result",
+      "pure": false,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+  ],
+  "contracts": [
+  ]
+}

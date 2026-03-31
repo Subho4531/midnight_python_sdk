@@ -26,3 +26,18 @@ class WalletError(MidnightSDKError):
 
 class CompactParseError(MidnightSDKError):
     """Failed to parse a .compact contract file."""
+
+
+class ProofServerConnectionError(MidnightSDKError):
+    """Raised when proof server is unreachable."""
+    pass
+
+
+class ModelNotTrainedError(MidnightSDKError):
+    """Raised when ML model hasn't been trained yet."""
+    pass
+
+
+class InvalidFeaturesError(MidnightSDKError):
+    """Raised when input features are invalid."""
+    pass

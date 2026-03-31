@@ -13,10 +13,17 @@ from .indexer import IndexerClient
 from .proof import ProofClient
 from .contract import ContractClient, Contract
 from .models import NetworkConfig
-from .exceptions import MidnightSDKError
+from .exceptions import MidnightSDKError, ProofServerConnectionError
 
 NETWORKS: dict[str, NetworkConfig] = {
     "local": NetworkConfig(
+        node_url="http://127.0.0.1:9944",
+        indexer_url="http://127.0.0.1:8088/api/v3/graphql",
+        indexer_ws_url="ws://127.0.0.1:8088/api/v3/graphql/ws",
+        proof_server_url="http://127.0.0.1:6300",
+        network_id="undeployed",
+    ),
+    "undeployed": NetworkConfig(
         node_url="http://127.0.0.1:9944",
         indexer_url="http://127.0.0.1:8088/api/v3/graphql",
         indexer_ws_url="ws://127.0.0.1:8088/api/v3/graphql/ws",
@@ -52,6 +59,7 @@ class MidnightClient:
     def __init__(
         self,
         network: str = "local",
+        wallet_address: str | None = None,
         node_url: str | None = None,
         indexer_url: str | None = None,
         proof_server_url: str | None = None,
@@ -63,15 +71,41 @@ class MidnightClient:
 
         cfg = NETWORKS[network]
         self.network = network
-
-        self.wallet = WalletClient(node_url or cfg.node_url)
-        self.indexer = IndexerClient(
-            url=indexer_url or cfg.indexer_url,
-            ws_url=cfg.indexer_ws_url,
-            network_id=cfg.network_id,
-        )
-        self.prover = ProofClient(proof_server_url or cfg.proof_server_url)
+        self.wallet_address = wallet_address or ""
+        
+        # In undeployed mode, only proof server is mandatory
+        if network == "undeployed":
+            self.prover = ProofClient(proof_server_url or cfg.proof_server_url)
+            
+            # Health-check proof server immediately
+            if not self.prover.is_alive():
+                raise ProofServerConnectionError(
+                    "Proof server not running on localhost:6300. "
+                    "Start it with: docker-compose up proof-server"
+                )
+            
+            # Optional services in undeployed mode
+            self.wallet = WalletClient(node_url or cfg.node_url)
+            self.indexer = IndexerClient(
+                url=indexer_url or cfg.indexer_url,
+                ws_url=cfg.indexer_ws_url,
+                network_id=cfg.network_id,
+            )
+        else:
+            # All services required for deployed networks
+            self.wallet = WalletClient(node_url or cfg.node_url)
+            self.indexer = IndexerClient(
+                url=indexer_url or cfg.indexer_url,
+                ws_url=cfg.indexer_ws_url,
+                network_id=cfg.network_id,
+            )
+            self.prover = ProofClient(proof_server_url or cfg.proof_server_url)
+        
         self.contracts = ContractClient(self.wallet, self.prover, self.indexer)
+        
+        # Initialize AI engine
+        from .ai import ZKInferenceEngine
+        self.ai = ZKInferenceEngine(self)
 
     def status(self) -> dict[str, bool]:
         """Check connectivity to all 3 Midnight services."""

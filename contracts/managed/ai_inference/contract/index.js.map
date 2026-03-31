@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../",
+  "sources": ["ai_inference.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EACA;;;;;;;;;;MAWA,AAAA,uBAEC;;;;;;;;;;;;;;;;;;;;;;;OAAA;;;;;GACA;EAdD;;;;;;;;;;;;;;;;;;;;;;;;;;IAOA;;;;;;;;;yEAAoC;;;;;;;GAOnC;EAHD,AAAA,0BAEC;UADG,KAAY;IAAZ;;;;;;;;;;6FAAA,KAAY;;;;wEAAA;;GACf;;;;;;;;;;;;;;;;IAND;qCAAA;;;;;;;;;;;0GAAoC;KAAA;;;;;;;;;;"
+}
