@@ -164,7 +164,7 @@ def compile_compact(contract_path: str, output_dir: str | None = None) -> Path:
                 f"Command: {' '.join(compile_cmd)}"
             )
         
-        print(f"✓ Compiled successfully to {output_dir}")
+        print(f"[OK] Compiled successfully to {output_dir}")
         print(f"Output:\n{result.stdout}")
         
         # Verify output files exist

@@ -18,24 +18,31 @@ from .exceptions import MidnightSDKError, ProofServerConnectionError
 NETWORKS: dict[str, NetworkConfig] = {
     "local": NetworkConfig(
         node_url="http://127.0.0.1:9944",
-        indexer_url="http://127.0.0.1:8088/api/v3/graphql",
-        indexer_ws_url="ws://127.0.0.1:8088/api/v3/graphql/ws",
+        indexer_url="http://127.0.0.1:8088/api/v4/graphql",
+        indexer_ws_url="ws://127.0.0.1:8088/api/v4/graphql/ws",
         proof_server_url="http://127.0.0.1:6300",
         network_id="undeployed",
     ),
     "undeployed": NetworkConfig(
         node_url="http://127.0.0.1:9944",
-        indexer_url="http://127.0.0.1:8088/api/v3/graphql",
-        indexer_ws_url="ws://127.0.0.1:8088/api/v3/graphql/ws",
+        indexer_url="http://127.0.0.1:8088/api/v4/graphql",
+        indexer_ws_url="ws://127.0.0.1:8088/api/v4/graphql/ws",
         proof_server_url="http://127.0.0.1:6300",
         network_id="undeployed",
     ),
+    "testnet": NetworkConfig(
+        node_url="https://rpc.testnet-02.midnight.network",
+        indexer_url="https://indexer.testnet-02.midnight.network/api/v4/graphql",
+        indexer_ws_url="wss://indexer.testnet-02.midnight.network/api/v4/graphql/ws",
+        proof_server_url="http://127.0.0.1:6300",  # Proof server runs locally
+        network_id="testnet-02",
+    ),
     "preprod": NetworkConfig(
         node_url="https://rpc.testnet-02.midnight.network",
-        indexer_url="https://indexer.testnet-02.midnight.network/api/v3/graphql",
-        indexer_ws_url="wss://indexer.testnet-02.midnight.network/api/v3/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",
-        network_id="preprod",
+        indexer_url="https://indexer.testnet-02.midnight.network/api/v4/graphql",
+        indexer_ws_url="wss://indexer.testnet-02.midnight.network/api/v4/graphql/ws",
+        proof_server_url="http://127.0.0.1:6300",  # Proof server runs locally
+        network_id="testnet-02",
     ),
 }
 
@@ -77,11 +84,14 @@ class MidnightClient:
         if network == "undeployed":
             self.prover = ProofClient(proof_server_url or cfg.proof_server_url)
             
-            # Health-check proof server immediately
+            # Health-check proof server (warn but don't fail)
             if not self.prover.is_alive():
-                raise ProofServerConnectionError(
+                import warnings
+                warnings.warn(
                     "Proof server not running on localhost:6300. "
-                    "Start it with: docker-compose up proof-server"
+                    "ZK proof generation will use fallback mode. "
+                    "Start it with: docker-compose up proof-server",
+                    UserWarning
                 )
             
             # Optional services in undeployed mode

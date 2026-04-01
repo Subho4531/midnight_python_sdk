@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../",
+  "sources": ["bulletin_board.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAMA,AAAA,IAEC;;;;;;;;;;;;;;;;;;;;;;OAAA;;;GACA;EATD;;;;;;;;;;;;;;;;;;;;;;;;;;IAIA;;;;;;;;;yEAAqC;;;;;;;GAKpC;EAHD,AAAA,OAEC;UADC,KAAa;IAAb;;;;;;;;;;6FAAA,KAAa;;;;wEAAA;;GACd;;;;;;;;;;;;;;;;IAJD;qCAAA;;;;;;;;;;;0GAAqC;KAAA;;;;;;;;;;"
+}

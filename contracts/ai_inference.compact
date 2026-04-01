@@ -13,3 +13,14 @@ export ledger result_count: Counter;
 export circuit submit_inference_result(): [] {
     result_count.increment(1);
 }
+
+// Alternative circuit with witness parameters (for advanced use)
+// Declares witness disclosure for proof hash, model hash, prediction, and confidence
+export circuit submit_inference_result_with_data(
+    witness new_proof_hash: Bytes(32),
+    witness new_model_hash: Bytes(32),
+    witness new_prediction: Bytes(16),
+    witness new_confidence: UInt32
+): [] discloses new_proof_hash, new_model_hash, new_prediction, new_confidence {
+    result_count.increment(1);
+}

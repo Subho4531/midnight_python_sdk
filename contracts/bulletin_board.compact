@@ -1,15 +1,9 @@
-pragma language_version >= 0.22;
+pragma language_version >= 0.20.0;
 import CompactStandardLibrary;
 
 // Simple bulletin board contract for posting messages
 export ledger message_count: Counter;
-export ledger latest_message: Bytes<256>;
 
-export circuit post(message: Bytes<256>): [] {
-  latest_message = message;
+export circuit post(): [] {
   message_count.increment(1);
-}
-
-export circuit get_count(): [Counter] {
-  return message_count;
 }

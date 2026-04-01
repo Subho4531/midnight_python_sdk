@@ -1,3 +1,0 @@
-Address: mn_preprod18aaa0c29015f76ccc540b50ad0d22b344814c904
-Seed: hackathon test seed phrase
-Balance: 1000000 DUST, 100 NIGHT

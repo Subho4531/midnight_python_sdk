@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Midnight Proof Server
+  proof-server:
+    build:
+      context: ./docker/proof
+      dockerfile: Dockerfile
+    ports:
+      - "6300:6300"
+    environment:
+      - PORT=6300
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6300/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - midnight-network
+
+  # Midnight Node (Mock for local development)
+  midnight-node:
+    build:
+      context: ./docker/node
+      dockerfile: Dockerfile
+    ports:
+      - "9944:9944"
+    environment:
+      - PORT=9944
+      - NETWORK_ID=undeployed
+    volumes:
+      - ./data/node:/tmp/midnight_node
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9944/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - midnight-network
+
+  # Midnight Indexer (Mock for local development)
+  midnight-indexer:
+    build:
+      context: ./docker/indexer
+      dockerfile: Dockerfile
+    ports:
+      - "8088:8088"
+    environment:
+      - PORT=8088
+      - NODE_URL=http://midnight-node:9944
+    depends_on:
+      - midnight-node
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - midnight-network
+
+networks:
+  midnight-network:
+    driver: bridge

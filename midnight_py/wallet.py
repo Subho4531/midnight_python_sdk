@@ -7,6 +7,27 @@ from .models import Balance, TransactionResult
 from .exceptions import WalletError, ConnectionError as MidnightConnectionError
 
 
+def get_explorer_url(tx_hash: str, network_id: str = "undeployed") -> str:
+    """
+    Get the explorer URL for a transaction.
+    
+    Args:
+        tx_hash: Transaction hash
+        network_id: Network ID (undeployed, testnet-02, mainnet)
+    
+    Returns:
+        Explorer URL for the transaction
+    """
+    if network_id == "undeployed":
+        return f"http://localhost:8088/tx/{tx_hash}"
+    elif network_id in ["testnet-02", "testnet"]:
+        return f"https://explorer.nocy.io/tx/{tx_hash}"
+    elif network_id == "mainnet":
+        return f"https://explorer.nocy.io/tx/{tx_hash}"
+    else:
+        return f"https://explorer.nocy.io/tx/{tx_hash}"
+
+
 class WalletClient:
     """
     Real Midnight wallet client.
@@ -237,39 +258,34 @@ class WalletClient:
         import hashlib
         import json
         
-        try:
-            # Try to submit to the node
-            response = self._http.post(
-                self.url,
-                json={
-                    "id": 1,
-                    "jsonrpc": "2.0",
-                    "method": "author_submitExtrinsic",
-                    "params": [signed_tx],
-                },
-                headers={"Content-Type": "application/json"},
-            )
-            response.raise_for_status()
-            data = response.json()
-            tx_hash = data.get("result", "pending_hash")
-            return TransactionResult(
-                tx_hash=tx_hash,
-                status="submitted",
-            )
-        except httpx.ConnectError:
-            # In undeployed mode, node might not be running
-            # Create a deterministic transaction hash from the signed data
-            tx_data = json.dumps(signed_tx, sort_keys=True)
-            tx_hash = hashlib.sha256(tx_data.encode()).hexdigest()
-            return TransactionResult(
-                tx_hash=tx_hash,
-                status="signed_locally",
-            )
-        except Exception as e:
-            # Create a deterministic hash even if submission fails
-            tx_data = json.dumps(signed_tx, sort_keys=True)
-            tx_hash = hashlib.sha256(tx_data.encode()).hexdigest()
-            return TransactionResult(
-                tx_hash=tx_hash,
-                status=f"error: {str(e)[:50]}",
-            )
+        # Submit to the node via JSON-RPC
+        response = self._http.post(
+            self.url,
+            json={
+                "id": 1,
+                "jsonrpc": "2.0",
+                "method": "author_submitExtrinsic",
+                "params": [signed_tx],
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        # Check for JSON-RPC error
+        if "error" in data:
+            error_msg = data["error"].get("message", str(data["error"]))
+            raise WalletError(f"Transaction submission failed: {error_msg}")
+        
+        # Get transaction hash from response
+        tx_hash = data.get("result", "")
+        
+        if not tx_hash:
+            raise WalletError("Node did not return transaction hash")
+        
+        return TransactionResult(
+            tx_hash=tx_hash,
+            status="submitted",
+        )
+

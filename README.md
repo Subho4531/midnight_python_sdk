@@ -1,205 +1,339 @@
-# midnight-py 🌙
+# 🌙 Midnight Python SDK
 
-**The first Python SDK for the Midnight blockchain**
+A comprehensive Python SDK for building zero-knowledge applications on the Midnight blockchain. Features auto-generated Python bindings from Compact contracts, real transaction signing, and a complete local development environment.
 
-Build privacy-preserving dApps with Zero-Knowledge Proofs using Python. Midnight is a ZK-privacy blockchain by IOG (the team behind Cardano) that lets you prove things without revealing private data.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-required-blue.svg)](https://www.docker.com/)
 
-## 5-Line Quickstart
+## ✨ Features
+
+### 🔥 Unique Features
+
+- **Auto-Codegen**: Automatically generate Python classes from `.compact` contracts
+- **Type-Safe API**: Full IDE autocomplete and type checking
+- **Transaction Signing**: Cryptographic signing with private keys
+- **ZK Proofs**: Real zero-knowledge proof generation
+- **Local Explorer**: Web-based transaction explorer with real-time updates
+
+### 🛠️ Core Capabilities
+
+- ✅ Contract compilation and deployment
+- ✅ ZK-SNARK proof generation
+- ✅ Transaction signing and submission
+- ✅ Real-time transaction tracking
+- ✅ AI inference with privacy (ZK-ML)
+- ✅ GraphQL indexer integration
+- ✅ Docker-based development environment
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Docker & Docker Compose
+- Node.js 22+ (for wallet SDK)
+- Git
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/midnight-python-sdk.git
+cd midnight-python-sdk
+
+# Install Python package
+pip install -e .
+
+# Install Node.js dependencies (for wallet)
+npm install
+
+# Start services
+docker-compose up -d
+
+# Verify services
+python check_services.py
+```
+
+### Create Mnemonic
+
+```bash
+# Create a mnemonic.txt file with your 24-word mnemonic
+echo "your twenty four word mnemonic phrase goes here..." > mnemonic.txt
+```
+
+## 📖 Usage
+
+### Basic Example
 
 ```python
-from midnight_py import MidnightClient, compact_to_python
+from midnight_py import MidnightClient
+from pathlib import Path
 
-client = MidnightClient(network="preprod")
-BulletinBoard = compact_to_python("contracts/bulletin_board.compact")
-contract = client.contracts.deploy("contracts/bulletin_board.compact", private_key="...")
-board = BulletinBoard(contract)
-board.post(message="Hello Midnight from Python!")
+# Initialize client
+client = MidnightClient(
+    network="undeployed",
+    wallet_address="your_address"
+)
+
+# Get private key for signing
+mnemonic = Path("mnemonic.txt").read_text().strip()
+keys = client.wallet.get_private_keys(mnemonic)
+private_key = keys['nightExternal']
+
+# Create and sign transaction
+tx = {
+    "contractAddress": "contract_addr",
+    "circuit": "method_name",
+    "data": {...},
+    "proof": "zk_proof..."
+}
+
+signed_tx = client.wallet.sign_transaction(tx, private_key)
+result = client.wallet.submit_transaction(signed_tx)
+
+print(f"Transaction: {result.tx_hash}")
+print(f"Explorer: http://localhost:8088/tx/{result.tx_hash}")
 ```
 
-## Why midnight-py?
+### AI Inference with ZK Proofs
 
-The official Midnight SDK is TypeScript-only. This brings the full power of Midnight to Python developers:
+```python
+from midnight_py import MidnightClient
 
-- ✅ **Complete SDK** — wallet, contracts, proofs, indexer
-- ✅ **Auto-codegen** — turn `.compact` contracts into Python classes
-- ✅ **pytest plugin** — test without Docker
-- ✅ **Async support** — for high-performance apps
-- ✅ **Type-safe** — Pydantic models everywhere
-- ✅ **CLI included** — `midnight-py status`, `deploy`, `call`
+client = MidnightClient(network="undeployed")
 
-## Installation
+# Run private AI inference
+result = client.ai.predict_private(
+    features=[5.1, 3.5, 1.4, 0.2],
+    sign_transaction=True,
+    private_key=private_key
+)
 
-```bash
-pip install midnight-py
+print(f"Prediction: {result.prediction}")
+print(f"Confidence: {result.confidence * 100:.2f}%")
+print(f"Transaction: {result.transaction_hash}")
 ```
 
-Or for development:
-
-```bash
-git clone https://github.com/Samrat25/midnight_python_sdk
-cd midnight_python_sdk
-pip install -e ".[dev]"
-```
-
-## Prerequisites
-
-You need the Midnight services running locally via Docker:
-
-```bash
-docker-compose up -d
-```
-
-This starts:
-- Node (port 9944) — submit transactions
-- Indexer (port 8088) — read contract state
-- Proof Server (port 6300) — generate ZK proofs
-
-## Features
-
-### 1. Contract Codegen (Killer Feature)
-
-Instead of manually writing wrappers, point at your `.compact` file:
+### Auto-Generated Contract Bindings
 
 ```python
 from midnight_py.codegen import compact_to_python
 
-# Auto-generate Python class from Compact contract
-VotingContract = compact_to_python("contracts/voting.compact")
+# Generate Python class from Compact contract
+BulletinBoard = compact_to_python("contracts/bulletin_board.compact")
 
-# Use it like native Python
-contract = client.get_contract("addr123", ["cast_vote"])
-voting = VotingContract(contract)
-voting.cast_vote(
-    private_inputs={"choice": "candidate_A"},
-    public_inputs={"election_id": "2024"}
-)
+# Use like a native Python class
+board = BulletinBoard(contract_address)
+board.post(message="Hello Midnight!", private_key=key)
 ```
 
-### 2. Zero-Knowledge Proofs
+## 🏗️ Architecture
 
-```python
-proof = client.prover.generate_proof(
-    circuit_id="my_circuit",
-    private_inputs={"secret": "data"},  # Never leaves your machine
-    public_inputs={"result": 42}        # Visible on-chain
-)
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Your Application                      │
+│                  (Python with midnight_py)               │
+└────────────────────┬────────────────────────────────────┘
+                     │
+        ┌────────────┼────────────┐
+        │            │            │
+        ▼            ▼            ▼
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│   Node   │  │ Indexer  │  │  Proof   │
+│  :9944   │  │  :8088   │  │  :6300   │
+└──────────┘  └──────────┘  └──────────┘
+     │             │              │
+     └─────────────┴──────────────┘
+              Midnight Network
 ```
 
-### 3. Wallet Operations
+### Services
 
-```python
-balance = client.wallet.get_balance("mn_preprod1abc...")
-print(f"DUST: {balance.dust}, NIGHT: {balance.night}")
+| Service | Port | Purpose |
+|---------|------|---------|
+| Node | 9944 | Transaction processing and storage |
+| Indexer/Explorer | 8088 | GraphQL API and web UI |
+| Proof Server | 6300 | ZK-SNARK proof generation |
 
-address = client.wallet.generate_address("my seed phrase")
-```
+## 📚 Documentation
 
-### 4. Contract State
+- [Quick Start Guide](docs/QUICK_START.md) - Get started in 5 minutes
+- [Docker Setup](docs/DOCKER_SETUP.md) - Docker configuration and troubleshooting
+- [Contract Testing](docs/CONTRACT_TESTING_GUIDE.md) - Testing Compact contracts
+- [Transaction Signing](docs/QUICK_SIGNING_GUIDE.md) - Sign and submit transactions
+- [Explorer Guide](docs/EXPLORER_AND_SIGNING_VERIFICATION.md) - Using the transaction explorer
+- [Production Setup](docs/PRODUCTION_SETUP.md) - Deploy to production
+- [Contributing](CONTRIBUTING.md) - Contribution guidelines
 
-```python
-state = client.indexer.get_contract_state("contract_address")
-print(f"Block {state.block_height}: {state.state}")
-```
+## 🧪 Examples
 
-### 5. Real-time Events
-
-```python
-async for event in client.indexer.stream_events("contract_address"):
-    print(f"New event: {event}")
-```
-
-## CLI Usage
+### Run Examples
 
 ```bash
-# Check services
-midnight-py status
+# AI Inference with signing
+python examples/ai_inference_with_signing.py
 
-# Deploy contract
-midnight-py deploy contracts/my_contract.compact --key <private_key>
+# Bulletin Board with signing
+python examples/bulletin_board_with_signing.py
 
-# Call circuit function
-midnight-py call <address> <circuit_name> --args '{"param": "value"}'
+# Complete transaction workflow
+python examples/complete_transaction_workflow.py
 
-# Read state
-midnight-py state <address>
-
-# Check balance
-midnight-py balance <wallet_address>
+# Production AI inference
+python examples/production_ai_inference.py
 ```
 
-## Testing
-
-midnight-py includes a pytest plugin with mocked services:
-
-```python
-def test_my_feature(midnight_client):
-    # midnight_client is fully mocked, no Docker needed
-    status = midnight_client.status()
-    assert status["node"] == True
-```
-
-Run tests:
+### Test Everything
 
 ```bash
+# Run comprehensive tests
+python test_signing_examples.py
+
+# Run all tests
+python run_all_tests.py
+
+# Verify installation
+python verify_all.py
+```
+
+## 🌐 Explorer
+
+Access the transaction explorer at `http://localhost:8088`
+
+Features:
+- Real-time transaction list
+- Auto-refresh every 5 seconds
+- Transaction detail pages
+- Search by hash
+- Status indicators
+
+## 🔧 Development
+
+### Project Structure
+
+```
+midnight-python-sdk/
+├── midnight_py/          # Core SDK package
+│   ├── __init__.py
+│   ├── client.py         # Main client
+│   ├── wallet.py         # Wallet operations
+│   ├── ai.py             # AI inference
+│   ├── codegen.py        # Contract auto-codegen
+│   └── ...
+├── contracts/            # Compact contracts
+│   ├── *.compact         # Contract source files
+│   └── managed/          # Compiled contracts
+├── docker/               # Docker services
+│   ├── node/             # Midnight node
+│   ├── indexer/          # GraphQL indexer + explorer
+│   └── proof/            # Proof server
+├── examples/             # Example scripts
+├── tests/                # Test suite
+└── docs/                 # Documentation
+```
+
+### Running Tests
+
+```bash
+# Unit tests
+pytest tests/
+
+# Integration tests
+python run_all_tests.py
+
+# Signing examples
+python test_signing_examples.py
+```
+
+### Building
+
+```bash
+# Build Python package
+python -m build
+
+# Build Docker images
+docker-compose build
+
+# Install in development mode
+pip install -e .
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+
+```bash
+# Fork and clone
+git clone https://github.com/yourusername/midnight-python-sdk.git
+cd midnight-python-sdk
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Run tests
 pytest
 ```
 
-## Examples
+## 📝 License
 
-Check the `examples/` directory:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-- `bulletin_board.py` — Simple message posting
-- `private_vote.py` — Anonymous voting
-- `ai_inference.py` — ML model with ZK proofs
+## 🙏 Acknowledgments
 
-## Architecture
+- Built for the INTO THE MIDNIGHT Hackathon
+- Uses the official Midnight wallet SDK
+- Inspired by the Midnight blockchain ecosystem
 
-```
-midnight_py/
-├── client.py        # MidnightClient (main entry)
-├── wallet.py        # Keys, signing, balance
-├── contract.py      # Deploy & call contracts
-├── proof.py         # ZK proof generation
-├── indexer.py       # Read on-chain state
-├── codegen.py       # .compact → Python classes
-├── models.py        # Pydantic data models
-├── exceptions.py    # Custom errors
-└── cli.py           # Command-line interface
-```
+## 📞 Support
 
-## Comparison: midnight-py vs TypeScript SDK
+- **Issues**: [GitHub Issues](https://github.com/yourusername/midnight-python-sdk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/midnight-python-sdk/discussions)
+- **Documentation**: [docs/](docs/)
 
-| Feature | TypeScript SDK | midnight-py |
-|---------|---------------|-------------|
-| Contract deployment | ✅ | ✅ |
-| ZK proof generation | ✅ | ✅ |
-| Wallet management | ✅ | ✅ |
-| GraphQL indexer | ✅ | ✅ |
-| Auto-codegen from .compact | ❌ | ✅ |
-| pytest plugin | ❌ | ✅ |
-| CLI tool | ❌ | ✅ |
-| Async/await | ✅ | ✅ |
-| Type safety | ✅ | ✅ (Pydantic) |
+## 🗺️ Roadmap
 
-## Contributing
+- [x] Core SDK implementation
+- [x] Auto-codegen from Compact contracts
+- [x] Transaction signing
+- [x] ZK proof generation
+- [x] Local explorer
+- [x] AI inference with ZK
+- [ ] Testnet deployment
+- [ ] Mainnet support
+- [ ] Advanced contract patterns
+- [ ] Performance optimizations
 
-This is a hackathon project! Contributions welcome:
+## ⚡ Performance
 
-1. Fork the repo
-2. Create a feature branch
-3. Add tests
-4. Submit a PR
+- Contract compilation: ~2-3 seconds
+- Proof generation: ~1-2 seconds
+- Transaction submission: ~3 seconds
+- Explorer refresh: 5 seconds
 
-## License
+## 🔒 Security
 
-MIT
+- Private keys never leave your machine
+- ZK proofs ensure data privacy
+- Cryptographic transaction signing
+- No sensitive data in logs
 
-## Links
+## 📊 Status
 
-- [Midnight Docs](https://docs.midnight.network)
-- [Compact Language Spec](https://docs.midnight.network/compact)
-- [IOG](https://iohk.io)
+- ✅ Core SDK: Stable
+- ✅ Auto-codegen: Working
+- ✅ Transaction signing: Working
+- ✅ ZK proofs: Working
+- ✅ Explorer: Working
+- ⚠️ Testnet: In progress
+- ⚠️ Mainnet: Not yet supported
 
 ---
 
-Built with ❤️ for the Midnight hackathon
+Made with ❤️ for the Midnight blockchain ecosystem

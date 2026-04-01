@@ -22,10 +22,10 @@ def main():
     features = [5.1, 3.5, 1.4, 0.2]
     
     # Print header
-    print("╔══════════════════════════════════════════════════════╗")
-    print("║    Midnight ZK AI Inference with Signing — Demo      ║")
-    print("║          AI Track · INTO THE MIDNIGHT Hackathon      ║")
-    print("╚══════════════════════════════════════════════════════╝")
+    print("=" * 54)
+    print("  Midnight ZK AI Inference with Signing - Demo")
+    print("     AI Track - INTO THE MIDNIGHT Hackathon")
+    print("=" * 54)
     print()
     
     # Create MidnightClient
@@ -42,20 +42,20 @@ def main():
     # Print connection status
     wallet_short = client.wallet_address[:40] + "..."
     print(f"Wallet        {wallet_short}")
-    print(f"Proof Server  localhost:6300  ✓ connected")
+    print(f"Proof Server  localhost:6300  OK connected")
     
     # Train model (skip if already exists)
     model_path = Path.home() / ".midnight" / "models" / "iris_rf.joblib"
     if not model_path.exists():
-        print("Model         iris_rf.joblib  ⚙ training...")
+        print("Model         iris_rf.joblib  training...")
         client.ai.train_iris()
     else:
-        print("Model         iris_rf.joblib  ✓ loaded")
+        print("Model         iris_rf.joblib  OK loaded")
     
     # Compile contract
-    print("Contract      ai_inference.compact  ⚙ compiling...")
+    print("Contract      ai_inference.compact  compiling...")
     
-    print("─" * 54)
+    print("-" * 54)
     print()
     
     # Get private key for signing
@@ -92,36 +92,48 @@ def main():
     
     # Print output
     print()
-    print("[PRIVATE]  Input features:       ██████████  ZK sealed")
-    print("[PRIVATE]  Raw probabilities:    ██████████  ZK sealed")
+    print("[PRIVATE]  Input features:       [SEALED]  ZK sealed")
+    print("[PRIVATE]  Raw probabilities:    [SEALED]  ZK sealed")
     print()
-    print("─" * 54)
+    print("-" * 54)
     print()
     print(f"[PUBLIC]   Prediction:           {result.prediction}")
     print(f"[PUBLIC]   Confidence:           {result.confidence * 100:.2f}%")
     print(f"[PUBLIC]   Model hash:           {result.model_hash[:16]}...")
     print()
-    print("─" * 54)
+    print("-" * 54)
     print()
     print(f"[PROOF]    Proof hash:           {result.proof_hash[:16]}...")
     print(f"[PROOF]    Proof bytes (hex):    {result.raw_proof_bytes[:32]}...")
     
     if result.transaction_hash:
         print()
-        print("─" * 54)
+        print("-" * 54)
         print()
         print(f"[TX]       Transaction hash:     {result.transaction_hash}")
         print(f"[TX]       Status:               signed & submitted")
+        
+        # Show explorer link
+        from midnight_py.wallet import get_explorer_url
+        network_id = 'undeployed'
+        explorer_url = get_explorer_url(result.transaction_hash, network_id)
+        print(f"[TX]       Explorer:             {explorer_url}")
     
     print()
     print(f"[STORED]   Receipt:              {result.receipt_path}")
     print()
-    print("─" * 54)
+    print("-" * 54)
     print()
-    print("✓ The private input NEVER left this machine.")
-    print("✓ The ZK proof was generated using compiled contract.")
-    print("✓ The transaction was signed with your private key.")
-    print("✓ Anyone can verify the prediction — nobody can see the input.")
+    print("OK The private input NEVER left this machine.")
+    print("OK The ZK proof was generated using compiled contract.")
+    print("OK The transaction was signed with your private key.")
+    print("OK Anyone can verify the prediction - nobody can see the input.")
+    
+    if result.transaction_hash:
+        print()
+        print("View transaction on explorer:")
+        print(f"  {explorer_url}")
+    
     print()
 
 

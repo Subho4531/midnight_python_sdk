@@ -2,10 +2,8 @@ pragma language_version >= 0.20.0;
 import CompactStandardLibrary;
 
 // Simple hello world contract
-export ledger message: Bytes<256>;
 export ledger message_count: Counter;
 
-export circuit storeMessage(public newMessage: Bytes<256>): [] {
-  message = newMessage;
+export circuit storeMessage(): [] {
   message_count.increment(1);
 }

@@ -1,0 +1,21 @@
+pragma language_version >= 0.20.0;
+import CompactStandardLibrary;
+
+// Private voting contract with ZK proofs
+// Voters can vote privately, only the tally is public
+
+export ledger yes_votes: Counter;
+export ledger no_votes: Counter;
+export ledger total_votes: Counter;
+
+// Cast a vote for yes
+export circuit voteYes(): [] {
+  yes_votes.increment(1);
+  total_votes.increment(1);
+}
+
+// Cast a vote for no
+export circuit voteNo(): [] {
+  no_votes.increment(1);
+  total_votes.increment(1);
+}

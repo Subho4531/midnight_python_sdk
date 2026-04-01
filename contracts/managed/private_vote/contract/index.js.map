@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../",
+  "sources": ["private_vote.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAWA,AAAA,OAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;MAGD,AAAA,MAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;;;;;;GACA;EArBD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAMA;;;;;;;;;yEAAiC;IACjC;;;;;;;;;yEAAgC;IAChC;;;;;;;;;yEAAmC;;;;;;;GAalC;EAVD,AAAA,UAGC;UAFC,KAAS;IAAT;;;;;;;;;;6FAAA,KAAS;;;;wEAAA;UACT,KAAW;IAAX;;;;;;;;;;6FAAA,KAAW;;;;wEAAA;;GACZ;EAGD,AAAA,SAGC;UAFC,KAAQ;IAAR;;;;;;;;;;6FAAA,KAAQ;;;;wEAAA;UACR,KAAW;IAAX;;;;;;;;;;6FAAA,KAAW;;;;wEAAA;;GACZ;;;;;;;;;;;;;;;;IAdD;qCAAA;;;;;;;;;;;0GAAiC;KAAA;IACjC;qCAAA;;;;;;;;;;;0GAAgC;KAAA;IAChC;qCAAA;;;;;;;;;;;0GAAmC;KAAA;;;;;;;;;;"
+}

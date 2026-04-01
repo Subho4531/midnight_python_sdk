@@ -19,17 +19,17 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual environments
-venv/
-env/
-ENV/
-
-# Testing
+MANIFEST
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
+*.log
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
 
 # IDE
 .vscode/
@@ -42,20 +42,22 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Midnight
-.midnight/
-*.compact.js
-
-# Sensitive files
-mnemonic.txt
-.test_wallet.txt
-.wallet_info.json
-.wallet_real.json
-accounts.json
-.env
-*.key
-.service_pids.txt
-
-# Node.js
+# Midnight SDK
 node_modules/
-package-lock.json
+.midnight/
+*.joblib
+
+# Sensitive Data
+mnemonic.txt
+.wallet_*.json
+.wallet_*.txt
+accounts.json
+.test_wallet.txt
+
+# Docker
+data/
+
+# Temporary files
+*.tmp
+*.bak
+*.old
