@@ -25,12 +25,123 @@ async def handle_graphql(request):
     try:
         data = await request.json()
         query = data.get("query", "")
+        variables = data.get("variables", {})
         
         # Simple __typename query
         if "__typename" in query:
             return web.json_response({
                 "data": {
                     "__typename": "Query"
+                }
+            })
+        
+        # Get unshielded balance
+        if "unshieldedCoins" in query:
+            address = variables.get("address", "")
+            if address:
+                # Query node for balance
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(f'{NODE_URL}/balance/{address}') as resp:
+                            if resp.status == 200:
+                                balance_data = await resp.json()
+                                return web.json_response({
+                                    "data": {
+                                        "unshieldedCoins": {
+                                            "value": balance_data.get("dust", 0)
+                                        }
+                                    }
+                                })
+                except Exception as e:
+                    print(f"[ERROR] Failed to fetch balance: {e}", flush=True)
+            
+            return web.json_response({
+                "data": {
+                    "unshieldedCoins": {"value": 0}
+                }
+            })
+        
+        # Get latest blocks
+        if "blocks" in query:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        NODE_URL,
+                        json={
+                            "jsonrpc": "2.0",
+                            "method": "chain_getBlock",
+                            "params": [],
+                            "id": 1
+                        }
+                    ) as resp:
+                        if resp.status == 200:
+                            rpc_data = await resp.json()
+                            block = rpc_data.get("result", {}).get("block")
+                            if block:
+                                return web.json_response({
+                                    "data": {
+                                        "blocks": [block]
+                                    }
+                                })
+            except Exception as e:
+                print(f"[ERROR] Failed to fetch blocks: {e}", flush=True)
+            
+            return web.json_response({
+                "data": {
+                    "blocks": []
+                }
+            })
+        
+        # Get contract state
+        if "contractState" in query or "contractAction" in query:
+            address = variables.get("address", "")
+            if address:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(f'{NODE_URL}/contract/{address}') as resp:
+                            if resp.status == 200:
+                                contract_data = await resp.json()
+                                return web.json_response({
+                                    "data": {
+                                        "contractState": {
+                                            "state": contract_data.get("state", {}),
+                                            "blockHeight": 0
+                                        }
+                                    }
+                                })
+                except Exception as e:
+                    print(f"[ERROR] Failed to fetch contract: {e}", flush=True)
+            
+            return web.json_response({
+                "data": {
+                    "contractState": None
+                }
+            })
+        
+        # Get transaction
+        if "transaction" in query:
+            tx_hash = variables.get("hash", "")
+            if tx_hash:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(f'{NODE_URL}/tx/{tx_hash}') as resp:
+                            if resp.status == 200:
+                                tx_data = await resp.json()
+                                return web.json_response({
+                                    "data": {
+                                        "transaction": {
+                                            "hash": tx_data.get("hash"),
+                                            "blockHeight": tx_data.get("block_height", 0),
+                                            "status": tx_data.get("status", "pending")
+                                        }
+                                    }
+                                })
+                except Exception as e:
+                    print(f"[ERROR] Failed to fetch transaction: {e}", flush=True)
+            
+            return web.json_response({
+                "data": {
+                    "transaction": None
                 }
             })
         

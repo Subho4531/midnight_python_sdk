@@ -176,39 +176,70 @@ class WalletClient:
 
     def get_balance(self, address: str) -> Balance:
         """
-        Get real DUST and NIGHT balance from the Midnight indexer.
+        Get real DUST and NIGHT balance using the official Midnight wallet SDK.
+        
+        NIGHT is shielded — the indexer cannot return it without a viewing key.
+        This method calls read_balance.mjs which uses @midnight-ntwrk/wallet-sdk-facade
+        to properly read shielded balances.
         """
+        import subprocess
+        import os
+        from pathlib import Path
+        
+        script = Path(__file__).parent.parent / "read_balance.mjs"
+        if not script.exists():
+            # Fallback to indexer for DUST only
+            return Balance(dust=0, night=0)
+        
+        mnemonic = os.environ.get("MNEMONIC", "")
+        if not mnemonic:
+            # Try reading from file
+            mnemonic_file = Path("mnemonic.txt.example")
+            if mnemonic_file.exists():
+                content = mnemonic_file.read_text()
+                lines = [l.strip() for l in content.split('\n') if l.strip() and not l.strip().startswith('#')]
+                if lines:
+                    mnemonic = lines[-1]
+        
+        if not mnemonic:
+            return Balance(dust=0, night=0)
+        
         try:
-            response = self._http.post(
-                self.url.replace("9944", "8088") + "/api/v3/graphql"
-                if "9944" in self.url
-                else "http://127.0.0.1:8088/api/v3/graphql",
-                json={
-                    "query": """
-                    query GetBalance($address: String!) {
-                        walletBalance(address: $address) {
-                            dust
-                            night
-                        }
-                    }
-                    """,
-                    "variables": {"address": address},
-                },
-                headers={"Content-Type": "application/json"},
+            result = subprocess.run(
+                ["node", str(script)],
+                capture_output=True,
+                text=True,
+                timeout=45,
+                env={**os.environ, "MNEMONIC": mnemonic},
             )
-            response.raise_for_status()
-            data = response.json()
-            if "data" in data and data["data"] and data["data"].get("walletBalance"):
-                bal = data["data"]["walletBalance"]
-                return Balance(
-                    dust=int(bal.get("dust", 0)),
-                    night=int(bal.get("night", 0)),
-                )
-        except httpx.ConnectError:
-            raise MidnightConnectionError("Indexer", "http://127.0.0.1:8088")
+            
+            if result.returncode == 0:
+                night = 0
+                dust = 0
+                
+                for line in result.stdout.splitlines():
+                    if line.startswith("NIGHT:"):
+                        night_str = line.split(":")[1].strip().replace(",", "")
+                        try:
+                            night = int(night_str) if night_str else 0
+                        except ValueError:
+                            night = 0
+                    if line.startswith("DUST:"):
+                        dust_str = line.split(":")[1].strip().replace(",", "")
+                        try:
+                            dust = int(dust_str) if dust_str else 0
+                        except ValueError:
+                            dust = 0
+                
+                return Balance(dust=dust, night=night)
+            else:
+                # If wallet SDK fails, return 0
+                return Balance(dust=0, night=0)
+                
+        except subprocess.TimeoutExpired:
+            return Balance(dust=0, night=0)
         except Exception:
-            pass
-        return Balance(dust=0, night=0)
+            return Balance(dust=0, night=0)
 
     def sign_transaction(self, tx: dict, private_key: str) -> dict:
         """

@@ -16,6 +16,7 @@ from .models import NetworkConfig
 from .exceptions import MidnightSDKError, ProofServerConnectionError
 
 NETWORKS: dict[str, NetworkConfig] = {
+    # Local development network (mock servers)
     "local": NetworkConfig(
         node_url="http://127.0.0.1:9944",
         indexer_url="http://127.0.0.1:8088/api/v4/graphql",
@@ -30,19 +31,48 @@ NETWORKS: dict[str, NetworkConfig] = {
         proof_server_url="http://127.0.0.1:6300",
         network_id="undeployed",
     ),
+    
+    # Midnight Testnet (testnet-02)
     "testnet": NetworkConfig(
         node_url="https://rpc.testnet-02.midnight.network",
         indexer_url="https://indexer.testnet-02.midnight.network/api/v4/graphql",
         indexer_ws_url="wss://indexer.testnet-02.midnight.network/api/v4/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",  # Proof server runs locally
+        proof_server_url="http://127.0.0.1:6300",
         network_id="testnet-02",
     ),
-    "preprod": NetworkConfig(
+    "testnet-02": NetworkConfig(
         node_url="https://rpc.testnet-02.midnight.network",
         indexer_url="https://indexer.testnet-02.midnight.network/api/v4/graphql",
         indexer_ws_url="wss://indexer.testnet-02.midnight.network/api/v4/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",  # Proof server runs locally
+        proof_server_url="http://127.0.0.1:6300",
         network_id="testnet-02",
+    ),
+    
+    # Midnight Preprod (pre-production network)
+    "preprod": NetworkConfig(
+        node_url="https://rpc.preprod.midnight.network",
+        indexer_url="https://indexer.preprod.midnight.network/api/v4/graphql",
+        indexer_ws_url="wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
+        proof_server_url="http://127.0.0.1:6300",
+        network_id="preprod",
+    ),
+    
+    # Midnight Devnet (development network)
+    "devnet": NetworkConfig(
+        node_url="https://rpc.devnet.midnight.network",
+        indexer_url="https://indexer.devnet.midnight.network/api/v4/graphql",
+        indexer_ws_url="wss://indexer.devnet.midnight.network/api/v4/graphql/ws",
+        proof_server_url="http://127.0.0.1:6300",
+        network_id="devnet",
+    ),
+    
+    # Midnight Mainnet (when available)
+    "mainnet": NetworkConfig(
+        node_url="https://rpc.midnight.network",
+        indexer_url="https://indexer.midnight.network/api/v4/graphql",
+        indexer_ws_url="wss://indexer.midnight.network/api/v4/graphql/ws",
+        proof_server_url="http://127.0.0.1:6300",
+        network_id="mainnet",
     ),
 }
 

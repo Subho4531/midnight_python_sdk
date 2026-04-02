@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir aiohttp
 
 # Copy server script
 COPY server.py /app/
+COPY blockchain.py /app/
 
 # Expose port
 EXPOSE 9944

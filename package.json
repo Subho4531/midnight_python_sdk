@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@midnight-ntwrk/wallet-sdk-hd": "^3.0.1",
-    "@midnight-ntwrk/midnight-js-network-id": "^4.0.2"
+    "@midnight-ntwrk/midnight-js-network-id": "^4.0.4",
+    "@midnight-ntwrk/wallet-sdk-facade": "^3.0.0",
+    "@midnight-ntwrk/wallet-sdk-hd": "^3.0.1"
   }
 }

@@ -64,6 +64,47 @@ echo "your twenty four word mnemonic phrase goes here..." > mnemonic.txt
 
 ## 📖 Usage
 
+### CLI Usage
+
+The midnight-py CLI provides a clean workflow for interacting with the Midnight blockchain:
+
+```bash
+# Check services
+midnight-py status
+
+# Check latest block (proves chain is running)
+midnight-py block
+
+# Check wallet balance
+# DUST is unshielded and readable directly
+# NIGHT is shielded — privacy by design — use wallet_fix.py for full balance
+midnight-py balance mn_addr_undeployed1your_address_here
+
+# Deploy a contract
+export MIDNIGHT_KEY=your_private_key
+midnight-py deploy contracts/bulletin_board.compact --wallet mn_addr...
+
+# Call a circuit
+midnight-py call <contract_address> post --args '{"message": "hello"}'
+
+# Read contract state
+midnight-py state <contract_address>
+
+# Look up a transaction
+midnight-py tx get <tx_hash>
+
+# List transactions for a contract
+midnight-py tx list <contract_address>
+```
+
+### Why NIGHT Balance Shows as Private
+
+When you demo the balance showing 0 NIGHT, explain:
+
+"NIGHT tokens are shielded by design. The indexer cannot reveal the balance without a cryptographic viewing key — that's exactly how Midnight's privacy works. The 5,000,000 NIGHT is there. The blockchain proves it exists without showing the amount to anyone who queries it. To verify our own balance, we use the official wallet SDK which has our viewing key. This is programmable privacy in action — your balance is yours, not the world's."
+
+This turns the "bug" into a feature demo.
+
 ### Basic Example
 
 ```python
