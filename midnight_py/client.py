@@ -32,29 +32,29 @@ NETWORKS: dict[str, NetworkConfig] = {
         network_id="undeployed",
     ),
     
+    # Midnight Preprod (pre-production network) - REAL NETWORK, NO DOCKER NEEDED
+    "preprod": NetworkConfig(
+        node_url="https://rpc.preprod.midnight.network",
+        indexer_url="https://indexer.preprod.midnight.network/api/v4/graphql",
+        indexer_ws_url="wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
+        proof_server_url="https://proof-server.preprod.midnight.network",
+        network_id="preprod",
+    ),
+    
     # Midnight Testnet (testnet-02)
     "testnet": NetworkConfig(
         node_url="https://rpc.testnet-02.midnight.network",
         indexer_url="https://indexer.testnet-02.midnight.network/api/v4/graphql",
         indexer_ws_url="wss://indexer.testnet-02.midnight.network/api/v4/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",
+        proof_server_url="https://proof-server.testnet-02.midnight.network",
         network_id="testnet-02",
     ),
     "testnet-02": NetworkConfig(
         node_url="https://rpc.testnet-02.midnight.network",
         indexer_url="https://indexer.testnet-02.midnight.network/api/v4/graphql",
         indexer_ws_url="wss://indexer.testnet-02.midnight.network/api/v4/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",
+        proof_server_url="https://proof-server.testnet-02.midnight.network",
         network_id="testnet-02",
-    ),
-    
-    # Midnight Preprod (pre-production network)
-    "preprod": NetworkConfig(
-        node_url="https://rpc.preprod.midnight.network",
-        indexer_url="https://indexer.preprod.midnight.network/api/v4/graphql",
-        indexer_ws_url="wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",
-        network_id="preprod",
     ),
     
     # Midnight Devnet (development network)
@@ -62,7 +62,7 @@ NETWORKS: dict[str, NetworkConfig] = {
         node_url="https://rpc.devnet.midnight.network",
         indexer_url="https://indexer.devnet.midnight.network/api/v4/graphql",
         indexer_ws_url="wss://indexer.devnet.midnight.network/api/v4/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",
+        proof_server_url="https://proof-server.devnet.midnight.network",
         network_id="devnet",
     ),
     
@@ -71,7 +71,7 @@ NETWORKS: dict[str, NetworkConfig] = {
         node_url="https://rpc.midnight.network",
         indexer_url="https://indexer.midnight.network/api/v4/graphql",
         indexer_ws_url="wss://indexer.midnight.network/api/v4/graphql/ws",
-        proof_server_url="http://127.0.0.1:6300",
+        proof_server_url="https://proof-server.midnight.network",
         network_id="mainnet",
     ),
 }
@@ -95,7 +95,7 @@ class MidnightClient:
 
     def __init__(
         self,
-        network: str = "local",
+        network: str = "preprod",
         wallet_address: str | None = None,
         node_url: str | None = None,
         indexer_url: str | None = None,

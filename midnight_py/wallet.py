@@ -174,13 +174,17 @@ class WalletClient:
         except json.JSONDecodeError as e:
             raise WalletError(f"Could not parse key derivation output: {e}")
 
-    def get_balance(self, address: str) -> Balance:
+    def get_balance(self, address: str, network_id: str = "undeployed") -> Balance:
         """
         Get real DUST and NIGHT balance using the official Midnight wallet SDK.
         
         NIGHT is shielded — the indexer cannot return it without a viewing key.
         This method calls read_balance.mjs which uses @midnight-ntwrk/wallet-sdk-facade
         to properly read shielded balances.
+        
+        Args:
+            address: Wallet address (not used by SDK, but kept for API compatibility)
+            network_id: Network ID (undeployed, preprod, testnet, mainnet)
         """
         import subprocess
         import os
@@ -210,7 +214,7 @@ class WalletClient:
                 capture_output=True,
                 text=True,
                 timeout=45,
-                env={**os.environ, "MNEMONIC": mnemonic},
+                env={**os.environ, "MNEMONIC": mnemonic, "NETWORK": network_id},
             )
             
             if result.returncode == 0:
