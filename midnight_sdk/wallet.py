@@ -216,75 +216,142 @@ class WalletClient:
 
     def get_balance(self, address: str, network_id: str = "undeployed") -> Balance:
         """
-        Get real DUST and NIGHT balance using the official Midnight wallet SDK.
+        Get DUST balance from node or indexer.
         
-        NIGHT is shielded — the indexer cannot return it without a viewing key.
-        This method calls read_balance.mjs which uses @midnight-ntwrk/wallet-sdk-facade
-        to properly read shielded balances.
+        For local networks, queries the node's /balance endpoint.
+        For remote networks, queries the indexer GraphQL API.
+        
+        NIGHT is shielded and cannot be queried without a viewing key.
         
         Args:
-            address: Wallet address (not used by SDK, but kept for API compatibility)
+            address: Wallet address to query
             network_id: Network ID (undeployed, preprod, testnet, mainnet)
         """
-        import subprocess
-        import os
-        from pathlib import Path
+        import httpx
         
-        script = Path(__file__).parent.parent / "scripts" / "utilities" / "read_balance.mjs"
-        if not script.exists():
-            # Fallback to indexer for DUST only
-            return Balance(dust=0, night=0)
+        # For local network, try node's balance endpoint first
+        if network_id in ["undeployed", "local"]:
+            try:
+                node_url = self.node_url if hasattr(self, 'node_url') else "http://127.0.0.1:9944"
+                response = httpx.get(
+                    f"{node_url}/balance/{address}",
+                    timeout=10.0,
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    dust = int(data.get("dust", 0))
+                    night = int(data.get("night", 0))
+                    return Balance(dust=dust, night=night)
+            except Exception:
+                # Fall through to indexer query
+                pass
         
-        mnemonic = os.environ.get("MNEMONIC", "")
-        if not mnemonic:
-            # Try reading from file
-            mnemonic_file = Path("mnemonic.txt.example")
-            if mnemonic_file.exists():
-                content = mnemonic_file.read_text()
-                lines = [l.strip() for l in content.split('\n') if l.strip() and not l.strip().startswith('#')]
-                if lines:
-                    mnemonic = lines[-1]
+        # Network indexer URLs
+        indexer_urls = {
+            "undeployed": "http://127.0.0.1:8088/api/v4/graphql",
+            "local": "http://127.0.0.1:8088/api/v4/graphql",
+            "preprod": "https://indexer.preprod.midnight.network/api/v4/graphql",
+            "testnet": "https://indexer.testnet-02.midnight.network/api/v4/graphql",
+            "testnet-02": "https://indexer.testnet-02.midnight.network/api/v4/graphql",
+            "mainnet": "https://indexer.mainnet.midnight.network/api/v4/graphql",
+        }
         
-        if not mnemonic:
-            return Balance(dust=0, night=0)
+        indexer_url = indexer_urls.get(network_id)
+        if not indexer_url:
+            raise WalletError(f"Unknown network: {network_id}")
         
         try:
-            result = subprocess.run(
-                ["node", str(script)],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                timeout=45,
-                env={**os.environ, "MNEMONIC": mnemonic, "NETWORK": network_id},
-            )
+            # Try multiple query formats for compatibility
+            queries = [
+                # Format 1: unshieldedCoins
+                """
+                query GetUnshieldedBalance($address: String!) {
+                    unshieldedCoins(address: $address) {
+                        value
+                    }
+                }
+                """,
+                # Format 2: coins
+                """
+                query GetBalance($address: String!) {
+                    coins(address: $address) {
+                        value
+                    }
+                }
+                """,
+                # Format 3: address query
+                """
+                query GetAddress($address: String!) {
+                    address(address: $address) {
+                        balance
+                    }
+                }
+                """
+            ]
             
-            if result.returncode == 0:
-                night = 0
-                dust = 0
+            dust = 0
+            last_error = None
+            
+            for query in queries:
+                try:
+                    response = httpx.post(
+                        indexer_url,
+                        json={"query": query, "variables": {"address": address}},
+                        headers={"Content-Type": "application/json"},
+                        timeout=15.0,
+                    )
+                    
+                    if response.status_code != 200:
+                        continue
+                    
+                    data = response.json()
+                    
+                    # Check for errors
+                    if "errors" in data and data["errors"]:
+                        last_error = data["errors"][0].get("message", "Unknown error")
+                        continue
+                    
+                    # Try to extract balance from response
+                    if "data" in data and data["data"]:
+                        result_data = data["data"]
+                        
+                        # Try different response formats
+                        for key in ["unshieldedCoins", "coins"]:
+                            if key in result_data and result_data[key]:
+                                coins = result_data[key]
+                                if isinstance(coins, list):
+                                    dust = sum(int(c.get("value", 0)) for c in coins)
+                                elif isinstance(coins, dict):
+                                    dust = int(coins.get("value", 0))
+                                return Balance(dust=dust, night=0)
+                        
+                        # Try address format
+                        if "address" in result_data and result_data["address"]:
+                            addr_data = result_data["address"]
+                            if "balance" in addr_data:
+                                dust = int(addr_data["balance"])
+                                return Balance(dust=dust, night=0)
                 
-                for line in result.stdout.splitlines():
-                    if line.startswith("NIGHT:"):
-                        night_str = line.split(":")[1].strip().replace(",", "")
-                        try:
-                            night = int(night_str) if night_str else 0
-                        except ValueError:
-                            night = 0
-                    if line.startswith("DUST:"):
-                        dust_str = line.split(":")[1].strip().replace(",", "")
-                        try:
-                            dust = int(dust_str) if dust_str else 0
-                        except ValueError:
-                            dust = 0
-                
-                return Balance(dust=dust, night=night)
+                except httpx.ConnectError:
+                    raise WalletError(f"Cannot connect to indexer at {indexer_url}. Make sure the network is running.")
+                except httpx.TimeoutException:
+                    raise WalletError(f"Indexer query timed out. Network may be slow or unreachable.")
+                except Exception as e:
+                    last_error = str(e)
+                    continue
+            
+            # If we got here, all queries failed
+            if last_error:
+                raise WalletError(f"Indexer query failed: {last_error}")
             else:
-                # If wallet SDK fails, return 0
+                # No error but no data - return zero balance
                 return Balance(dust=0, night=0)
-                
-        except subprocess.TimeoutExpired:
-            return Balance(dust=0, night=0)
-        except Exception:
-            return Balance(dust=0, night=0)
+            
+        except WalletError:
+            raise
+        except Exception as e:
+            raise WalletError(f"Error fetching balance: {str(e)}")
 
     def sign_transaction(self, tx: dict, private_key: str) -> dict:
         """
@@ -364,6 +431,144 @@ class WalletClient:
             tx_hash=tx_hash,
             status="submitted",
         )
+
+    def transfer_unshielded(
+        self,
+        recipient: str,
+        amount: int,
+        mnemonic: str,
+        network_id: str = "undeployed"
+    ) -> dict:
+        """
+        Transfer unshielded NIGHT tokens.
+        
+        This creates and submits a public transfer transaction.
+        DUST cannot be transferred - it's non-transferable.
+        
+        Args:
+            recipient: Recipient address (mn_addr_...)
+            amount: Amount to transfer in smallest units
+            mnemonic: Sender's mnemonic phrase
+            network_id: Network ID
+            
+        Returns:
+            dict with tx_hash and status
+        """
+        # Get sender address
+        addr_info = self.get_real_address(mnemonic, network_id)
+        sender = addr_info.get("address")
+        
+        if not sender:
+            raise WalletError("Failed to derive sender address")
+        
+        # Build transfer transaction
+        tx_payload = {
+            "type": "transfer",
+            "from": sender,
+            "to": recipient,
+            "amount": amount,
+            "token": "NIGHT",
+            "network": network_id,
+        }
+        
+        # Get private keys for signing
+        keys = self.get_private_keys(mnemonic)
+        
+        # Sign transaction
+        signed_tx = self.sign_transaction(tx_payload, keys.get("nightExternal", ""))
+        
+        # Submit transaction
+        result = self.submit_transaction(signed_tx)
+        
+        return {
+            "tx_hash": result.tx_hash,
+            "status": result.status,
+            "from": sender,
+            "to": recipient,
+            "amount": amount,
+        }
+
+    def transfer_shielded(
+        self,
+        recipient: str,
+        amount: int,
+        token: str,
+        mnemonic: str,
+        network_id: str = "undeployed"
+    ) -> dict:
+        """
+        Transfer shielded tokens (private transfer).
+        
+        This requires the Midnight wallet SDK for ZK proof generation.
+        DUST cannot be transferred - it's non-transferable.
+        
+        Args:
+            recipient: Recipient shielded address
+            amount: Amount to transfer in smallest units
+            token: Token type (NIGHT or custom)
+            mnemonic: Sender's mnemonic phrase
+            network_id: Network ID
+            
+        Returns:
+            dict with tx_hash and status
+        """
+        # Validate token
+        if token.upper() == "DUST":
+            raise WalletError("DUST cannot be transferred - it's non-transferable")
+        
+        # Check if wallet SDK script exists
+        helper_script = Path(__file__).parent.parent / "scripts" / "wallet" / "transfer_shielded.mjs"
+        
+        if not helper_script.exists():
+            raise NotImplementedError(
+                "Shielded transfers require the Midnight wallet SDK. "
+                "Install Node.js 22+ and run: npm install"
+            )
+        
+        try:
+            node_cmd = _find_node_executable()
+            
+            # Call the shielded transfer script
+            result = subprocess.run(
+                [node_cmd, str(helper_script)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=90,  # Shielded transfers take longer
+                cwd=str(helper_script.parent),
+                env={
+                    **os.environ,
+                    "MNEMONIC": mnemonic,
+                    "NETWORK_ID": network_id,
+                    "RECIPIENT": recipient,
+                    "AMOUNT": str(amount),
+                    "TOKEN": token,
+                },
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                data = json.loads(result.stdout.strip())
+                return {
+                    "tx_hash": data.get("txHash", ""),
+                    "status": "submitted",
+                    "to": recipient,
+                    "amount": amount,
+                    "token": token,
+                }
+            else:
+                raise WalletError(
+                    f"Shielded transfer failed: {result.stderr}\n"
+                    "Make sure the Midnight wallet SDK is installed"
+                )
+        except subprocess.TimeoutExpired:
+            raise WalletError("Shielded transfer timed out (ZK proof generation can take 30+ seconds)")
+        except json.JSONDecodeError as e:
+            raise WalletError(f"Could not parse transfer result: {e}")
+        except FileNotFoundError:
+            raise NotImplementedError(
+                "Shielded transfers require Node.js. "
+                "Install Node.js 22+ from https://nodejs.org"
+            )
 
 
 
