@@ -60,17 +60,63 @@ def contract_deploy(
         console.print("[red]No wallet specified[/red]")
         raise typer.Exit(1)
     
+    if wallet_name not in config_mgr.config.wallets:
+        console.print(f"[red]Wallet '{wallet_name}' not found[/red]")
+        raise typer.Exit(1)
+    
     wallet_path = Path(config_mgr.config.wallets[wallet_name])
+    if not wallet_path.exists():
+        console.print(f"[red]Wallet file not found: {wallet_path}[/red]")
+        raise typer.Exit(1)
+        
     mnemonic = wallet_path.read_text().strip()
     
     try:
+        # Import WalletClient to derive private key
+        from ...wallet import WalletClient
+        
+        with console.status("[cyan]Deriving private key..."):
+            wallet_client = WalletClient(profile_obj.node_url)
+            keys = wallet_client.get_private_keys(mnemonic)
+            private_key = keys['nightExternal']
+        
         with console.status("[cyan]Deploying contract..."):
             client = MidnightClient(network=profile_obj.name)
-            result = client.contracts.deploy(str(path), mnemonic)
+            result = client.contracts.deploy(
+                str(path), 
+                private_key=private_key,
+                sign_transaction=True
+            )
         
         console.print(f"[green]✓[/green] Contract deployed")
-        console.print(f"[cyan]Address:[/cyan] {result.contract_address}")
-        console.print(f"[cyan]TX Hash:[/cyan] {result.tx_hash}")
+        console.print(f"[cyan]Address:[/cyan] {result.address}")
+        
+        # Try to get tx_hash if available
+        tx_hash = getattr(result, 'tx_hash', 'N/A')
+        if tx_hash != 'N/A':
+            console.print(f"[cyan]TX Hash:[/cyan] {tx_hash}")
+        
+        # Save contract info to local cache
+        cache_file = Path.home() / ".midnight" / "contracts.json"
+        cache_file.parent.mkdir(exist_ok=True)
+        
+        contracts = []
+        if cache_file.exists():
+            try:
+                contracts = json.loads(cache_file.read_text())
+            except:
+                contracts = []
+        
+        contracts.append({
+            "name": path.stem,
+            "address": result.address,
+            "network": profile_obj.name,
+            "tx_hash": getattr(result, 'tx_hash', 'N/A'),
+            "deployed_at": str(Path.cwd() / path)
+        })
+        
+        cache_file.write_text(json.dumps(contracts, indent=2))
+        
     except Exception as e:
         console.print(f"[red]Deployment failed: {e}[/red]")
         raise typer.Exit(1)
@@ -94,7 +140,15 @@ def contract_call(
         console.print("[red]No wallet specified[/red]")
         raise typer.Exit(1)
     
+    if wallet_name not in config_mgr.config.wallets:
+        console.print(f"[red]Wallet '{wallet_name}' not found[/red]")
+        raise typer.Exit(1)
+    
     wallet_path = Path(config_mgr.config.wallets[wallet_name])
+    if not wallet_path.exists():
+        console.print(f"[red]Wallet file not found: {wallet_path}[/red]")
+        raise typer.Exit(1)
+        
     mnemonic = wallet_path.read_text().strip()
     
     try:
@@ -104,10 +158,23 @@ def contract_call(
         raise typer.Exit(1)
     
     try:
+        # Import WalletClient to derive private key
+        from ...wallet import WalletClient
+        
+        with console.status("[cyan]Deriving private key..."):
+            wallet_client = WalletClient(profile_obj.node_url)
+            keys = wallet_client.get_private_keys(mnemonic)
+            private_key = keys['nightExternal']
+        
         with console.status("[cyan]Calling contract..."):
             client = MidnightClient(network=profile_obj.name)
             contract = client.get_contract(address, [circuit])
-            result = contract.call(circuit, args_dict, mnemonic)
+            result = contract.call(
+                circuit_name=circuit,
+                private_key=private_key,
+                sign_transaction=True,
+                **args_dict
+            )
         
         console.print(f"[green]✓[/green] Circuit called")
         console.print(f"[cyan]TX Hash:[/cyan] {result.tx_hash}")

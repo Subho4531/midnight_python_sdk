@@ -32,6 +32,7 @@ from .commands import (
     events,
     console as console_cmd,
     transfer,
+    verify,
 )
 
 # Main app
@@ -124,6 +125,9 @@ app.add_typer(node.app, name="node")
 app.add_typer(events.app, name="events")
 app.add_typer(console_cmd.app, name="console")
 app.add_typer(transfer.app, name="transfer")
+
+# Add verify as a standalone command
+app.command(name="verify")(verify.verify_installation)
 
 
 # Quick status command at root level
