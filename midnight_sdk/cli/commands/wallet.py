@@ -200,11 +200,16 @@ def wallet_list():
 def wallet_balance(
     address: str = typer.Argument(None, help="Address to check (default: active wallet)"),
     profile: str = typer.Option(None, "--profile", "-p", help="Network profile"),
+    full: bool = typer.Option(False, "--full", help="Show full balance including shielded NIGHT (requires wallet sync)"),
 ):
     """Show DUST balance for address."""
     config_mgr = ConfigManager()
     config_mgr.load()
     profile_obj = config_mgr.get_profile(profile)
+    
+    # Get mnemonic if using full balance
+    mnemonic = None
+    wallet_name = None
     
     # Get address
     if not address:
@@ -237,28 +242,111 @@ def wallet_balance(
             console.print(f"[red]Error deriving address: {e}[/red]")
             raise typer.Exit(1)
     
-    # Get balance
     wallet_client = WalletClient(profile_obj.node_url)
     
-    try:
-        with console.status("[cyan]Fetching balance from indexer..."):
-            balance = wallet_client.get_balance(address, profile_obj.network_id)
+    # If --full flag is set, use the full balance query
+    if full:
+        if not mnemonic:
+            console.print("[red]Full balance requires a wallet (not just an address)[/red]")
+            console.print("[yellow]Use without address argument to query your default wallet[/yellow]")
+            raise typer.Exit(1)
         
-        table = Table(title=f"Balance for {address[:16]}...")
-        table.add_column("Token", style="cyan")
-        table.add_column("Amount", style="green", justify="right")
+        console.print(f"\n[yellow]⚠ Full balance sync on {profile_obj.network_id} network[/yellow]\n")
+        console.print("[dim]This requires syncing your wallet with the network, which can take 5-10 minutes")
+        console.print("on public networks like preprod/testnet.[/dim]\n")
         
-        # Format amounts with commas
-        dust_str = f"{balance.dust:,}" if balance.dust else "0"
+        proceed = typer.confirm("Continue with full sync?", default=False)
+        if not proceed:
+            console.print("\n[cyan]Tip:[/cyan] For faster balance checks:")
+            console.print("  • Use 1AM wallet (https://1am.xyz) or Lace extension")
+            console.print("  • Use block explorer: https://explorer.preprod.midnight.network/")
+            console.print("  • Use quick balance: midnight balance (unshielded only)")
+            raise typer.Exit(0)
         
-        table.add_row("DUST", dust_str)
-        table.add_row("NIGHT", "[dim]Shielded (use wallet SDK)[/dim]")
-        
-        console.print(table)
-        console.print("\n[dim]Note: NIGHT is shielded and cannot be queried from indexer without a viewing key.[/dim]")
-    except Exception as e:
-        console.print(f"[red]Error fetching balance: {e}[/red]")
-        raise typer.Exit(1)
+        try:
+            with console.status("[cyan]Syncing wallet (this may take 5-10 minutes)..."):
+                balance_data = wallet_client.get_full_balance(
+                    mnemonic,
+                    profile_obj.network_id,
+                    profile_obj.indexer_url,
+                    profile_obj.indexer_ws_url,
+                    profile_obj.node_url,
+                    profile_obj.proof_server_url
+                )
+            
+            # Display all three addresses
+            addr_table = Table(title="Wallet Addresses")
+            addr_table.add_column("Type", style="cyan")
+            addr_table.add_column("Address", style="yellow")
+            
+            addr_table.add_row("Unshielded", balance_data['addresses']['unshielded'])
+            addr_table.add_row("Shielded", balance_data['addresses']['shielded'])
+            addr_table.add_row("DUST", balance_data['addresses']['dust'])
+            
+            console.print(addr_table)
+            console.print()
+            
+            # Display balances
+            balance_table = Table(title="Full Balance")
+            balance_table.add_column("Token", style="cyan")
+            balance_table.add_column("Amount", style="green", justify="right")
+            balance_table.add_column("Type", style="dim")
+            
+            # Format amounts with commas
+            dust_str = f"{int(balance_data['balances']['dust']):,}"
+            night_unshielded_str = f"{int(balance_data['balances']['night_unshielded']):,}"
+            night_shielded_str = f"{int(balance_data['balances']['night_shielded']):,}"
+            
+            balance_table.add_row("DUST", dust_str, "Unshielded (public)")
+            balance_table.add_row("NIGHT (unshielded)", night_unshielded_str, "Public")
+            balance_table.add_row("NIGHT (shielded)", night_shielded_str, "Private (ZK)")
+            
+            console.print(balance_table)
+            
+            # Show coin counts
+            console.print(f"\n[dim]Coins: {balance_data['coins']['unshielded']} unshielded, "
+                         f"{balance_data['coins']['shielded']} shielded, "
+                         f"{balance_data['coins']['dust']} DUST[/dim]")
+            console.print(f"[dim]Synced: {'✓' if balance_data['synced'] else '✗'}[/dim]")
+            
+        except Exception as e:
+            console.print(f"\n[red]✗ Full balance sync failed:[/red] {e}\n")
+            console.print("[yellow]Alternative ways to check your balance:[/yellow]")
+            console.print("  1. Use 1AM wallet: https://1am.xyz")
+            console.print("  2. Use Lace extension: https://www.lace.io/")
+            console.print(f"  3. Use block explorer: https://explorer.{profile_obj.network_id}.midnight.network/")
+            console.print("  4. Import your mnemonic into 1AM or Lace to view full balance")
+            raise typer.Exit(1)
+    else:
+        # Quick balance query (unshielded only)
+        try:
+            with console.status("[cyan]Fetching balance from indexer..."):
+                balance = wallet_client.get_balance(address, profile_obj.network_id)
+            
+            # Ensure address is a string for display
+            addr_display = str(address) if isinstance(address, str) else address.get('address', str(address))
+            addr_short = addr_display[:16] if len(addr_display) > 16 else addr_display
+            
+            table = Table(title=f"Balance for {addr_short}...")
+            table.add_column("Token", style="cyan")
+            table.add_column("Amount", style="green", justify="right")
+            
+            # Format amounts with commas
+            dust_str = f"{balance.dust:,}" if balance.dust else "0"
+            night_str = f"{balance.night:,}" if balance.night else "0"
+            
+            table.add_row("DUST", dust_str)
+            table.add_row("NIGHT (unshielded)", night_str)
+            
+            console.print(table)
+            console.print("\n[dim]Note: This shows unshielded balances only.[/dim]")
+            console.print("[dim]For full balance including shielded NIGHT:[/dim]")
+            console.print("  • Use: midnight wallet balance --full (requires 5-10 min sync)")
+            console.print("  • Or use 1AM wallet: https://1am.xyz")
+            console.print("  • Or use Lace extension: https://www.lace.io/")
+        except Exception as e:
+            console.print(f"[red]Error fetching balance: {e}[/red]")
+            raise typer.Exit(1)
 
 
 @app.command("address")
@@ -266,6 +354,7 @@ def wallet_address(
     name: str = typer.Argument(None, help="Wallet name (default: active)"),
     profile: str = typer.Option(None, "--profile", "-p", help="Network profile"),
     airdrop: bool = typer.Option(False, "--airdrop", help="Fund wallet with testnet tokens"),
+    all_addresses: bool = typer.Option(True, "--all/--no-all", help="Show all address types (default: True)"),
 ):
     """Show address for named wallet."""
     config_mgr = ConfigManager()
@@ -287,10 +376,37 @@ def wallet_address(
     wallet_client = WalletClient(profile_obj.node_url)
     
     try:
-        addr_info = wallet_client.get_real_address(mnemonic, profile_obj.network_id)
-        address = addr_info['address']
-        console.print(f"[cyan]Wallet:[/cyan] {wallet_name}")
-        console.print(f"[cyan]Address:[/cyan] {address}")
+        if all_addresses:
+            # Get all three address types
+            addr_info = wallet_client.get_all_addresses(mnemonic, profile_obj.network_id)
+            
+            # Show all address types in a table
+            from rich.table import Table
+            table = Table(title=f"Addresses for '{wallet_name}'")
+            table.add_column("Type", style="cyan")
+            table.add_column("Address", style="yellow")
+            
+            table.add_row("Unshielded (NIGHT)", addr_info['addresses']['unshielded'])
+            table.add_row("Shielded (NIGHT)", addr_info['addresses']['shielded'])
+            table.add_row("DUST", addr_info['addresses']['dust'])
+            
+            console.print(table)
+            console.print("\n[dim]• Unshielded: Public address for NIGHT transfers[/dim]")
+            console.print("[dim]• Shielded: Private address for shielded NIGHT[/dim]")
+            console.print("[dim]• DUST: Address for DUST generation[/dim]")
+            
+            address = addr_info['addresses']['unshielded']
+        else:
+            # Just get unshielded address
+            addr_info = wallet_client.get_real_address(mnemonic, profile_obj.network_id)
+            
+            if isinstance(addr_info, dict):
+                address = addr_info.get('address', str(addr_info))
+            else:
+                address = str(addr_info)
+            
+            console.print(f"[cyan]Wallet:[/cyan] {wallet_name}")
+            console.print(f"[cyan]Address:[/cyan] {address}")
         
         # Airdrop if requested
         if airdrop:
@@ -332,3 +448,29 @@ def wallet_export(
         wallet_client = WalletClient()
         keys = wallet_client.get_private_keys(mnemonic)
         console.print(f"[cyan]Private Key:[/cyan]\n{keys['private_key']}\n")
+
+
+@app.command("airdrop")
+def wallet_airdrop(
+    address: str = typer.Argument(..., help="Address to fund (mn_addr_...)"),
+    dust: int = typer.Option(1000000000000, "--dust", help="DUST amount (default: 1 trillion)"),
+    night: int = typer.Option(5000000000, "--night", help="NIGHT amount (default: 5 billion)"),
+    profile: str = typer.Option(None, "--profile", "-p", help="Network profile"),
+):
+    """Fund an address with testnet tokens (local network only)."""
+    config_mgr = ConfigManager()
+    config_mgr.load()
+    profile_obj = config_mgr.get_profile(profile)
+    
+    if profile_obj.network_id not in ["undeployed", "local"]:
+        console.print(f"[yellow]⚠ Airdrop only works on local network[/yellow]")
+        console.print(f"[yellow]Current network: {profile_obj.name} ({profile_obj.network_id})[/yellow]")
+        console.print(f"\n[cyan]For testnet tokens, visit:[/cyan]")
+        console.print(f"https://faucet.{profile_obj.network_id}.midnight.network/")
+        raise typer.Exit(1)
+    
+    console.print(f"[cyan]Funding address:[/cyan] {address}")
+    console.print(f"[cyan]DUST:[/cyan]  {dust:,}")
+    console.print(f"[cyan]NIGHT:[/cyan] {night:,}")
+    
+    airdrop_tokens(address, profile_obj.node_url, dust, night)

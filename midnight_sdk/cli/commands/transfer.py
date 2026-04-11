@@ -126,21 +126,29 @@ def transfer_unshielded(
     
     # Execute transfer
     try:
-        with console.status("[cyan]Sending transaction..."):
-            client = MidnightClient(network=profile_obj.name)
+        with console.status("[cyan]Sending transaction (this may take up to 3 minutes)..."):
+            wallet_client = WalletClient(profile_obj.node_url)
             
-            # Build and send transfer transaction
-            result = client.wallet.transfer_unshielded(
+            # Build and send transfer transaction with full network configuration
+            result = wallet_client.transfer_unshielded(
                 recipient=recipient,
                 amount=amount,
                 mnemonic=mnemonic,
-                network_id=profile_obj.network_id
+                network_id=profile_obj.network_id,
+                indexer_url=profile_obj.indexer_url,
+                indexer_ws=profile_obj.indexer_ws_url,
+                node_url=profile_obj.node_url,
+                proof_url=profile_obj.proof_server_url
             )
         
         console.print(f"\n[green]✓[/green] Transfer submitted successfully")
         console.print(f"[cyan]TX Hash:[/cyan] {result.get('tx_hash', 'N/A')}")
         
-        if result.get('tx_hash'):
+        # For local networks, explain that tx status won't show anything
+        if profile_obj.network_id in ["undeployed", "local"]:
+            console.print(f"\n[dim]Note: Local transfers are balance updates, not blockchain transactions.[/dim]")
+            console.print(f"[dim]Verify with: midnight balance[/dim]")
+        elif result.get('tx_hash'):
             console.print(f"\n[dim]Track status: midnight tx status {result['tx_hash']}[/dim]")
     
     except Exception as e:
@@ -275,11 +283,12 @@ def transfer_info():
     night_table.add_column("Property", style="cyan")
     night_table.add_column("Value", style="yellow")
     
-    night_table.add_row("Type", "Native, Unshielded (Public)")
+    night_table.add_row("Type", "Native Token")
     night_table.add_row("Transferable", "✓ Yes")
-    night_table.add_row("Use Cases", "Governance, Staking, Generating DUST")
-    night_table.add_row("Privacy", "Public (amounts visible on-chain)")
-    night_table.add_row("Shielded Version", "Available (private transfers)")
+    night_table.add_row("Forms", "Unshielded (public) & Shielded (private)")
+    night_table.add_row("Use Cases", "Governance, Staking, Transfers, Generating DUST")
+    night_table.add_row("Unshielded", "Public (amounts visible on-chain)")
+    night_table.add_row("Shielded", "Private (amounts encrypted on-chain)")
     
     console.print(night_table)
     console.print()
@@ -289,11 +298,11 @@ def transfer_info():
     dust_table.add_column("Property", style="cyan")
     dust_table.add_column("Value", style="yellow")
     
-    dust_table.add_row("Type", "Shielded Resource")
+    dust_table.add_row("Type", "Resource Token")
     dust_table.add_row("Transferable", "✗ No - Non-transferable")
+    dust_table.add_row("Visibility", "Unshielded (public, queryable)")
     dust_table.add_row("Generation", "Automatic from NIGHT holdings")
     dust_table.add_row("Use Cases", "Transaction fees, Contract execution")
-    dust_table.add_row("Privacy", "Shielded (amounts encrypted)")
     
     console.print(dust_table)
     console.print()
@@ -308,13 +317,13 @@ def transfer_info():
     transfer_table.add_column("Speed", style="magenta")
     
     transfer_table.add_row(
-        "Unshielded",
+        "Unshielded NIGHT",
         "midnight transfer unshielded",
         "Public",
         "Fast (~2s)"
     )
     transfer_table.add_row(
-        "Shielded",
+        "Shielded NIGHT",
         "midnight transfer shielded",
         "Private",
         "Slower (~30s)"
@@ -327,6 +336,8 @@ def transfer_info():
     console.print("[bold yellow]Important Notes:[/bold yellow]\n")
     console.print("• DUST cannot be transferred between wallets")
     console.print("• DUST is generated automatically based on NIGHT holdings")
+    console.print("• DUST is unshielded (public) and queryable from indexer")
+    console.print("• NIGHT can be transferred in unshielded (public) or shielded (private) form")
     console.print("• Unshielded transfers are public and fast")
     console.print("• Shielded transfers are private but require ZK proof generation")
     console.print("• Both transfer types consume DUST for transaction fees")
@@ -334,9 +345,9 @@ def transfer_info():
     
     # Examples
     console.print("[bold cyan]Examples:[/bold cyan]\n")
-    console.print("[dim]# Transfer 1,000,000 NIGHT (unshielded)[/dim]")
+    console.print("[dim]# Transfer 1,000,000 NIGHT (unshielded/public)[/dim]")
     console.print("midnight transfer unshielded mn_addr_preprod1... 1000000\n")
     console.print("[dim]# Transfer 5,000,000 NIGHT (shielded/private)[/dim]")
     console.print("midnight transfer shielded <shielded_addr> 5000000\n")
-    console.print("[dim]# Check balance before transfer[/dim]")
+    console.print("[dim]# Check balance (shows DUST and unshielded NIGHT)[/dim]")
     console.print("midnight wallet balance\n")

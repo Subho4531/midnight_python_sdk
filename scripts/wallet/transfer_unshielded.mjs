@@ -14,7 +14,7 @@
 import { HDWallet, Roles } from "@midnight-ntwrk/wallet-sdk-hd";
 import { createKeystore } from "@midnight-ntwrk/wallet-sdk-unshielded-wallet";
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
-import { Buffer } from "buffer";
+import { mnemonicToSeedSync } from "bip39";
 import fetch from "node-fetch";
 
 // Get environment variables
@@ -63,17 +63,23 @@ const NETWORKS = {
 
 const config = NETWORKS[NETWORK] || NETWORKS.undeployed;
 
-// Derive keys from mnemonic
-function deriveKeys(seed) {
-  const hdWallet = HDWallet.fromSeed(Buffer.from(seed, 'hex'));
-  if (hdWallet.type !== 'seedOk') throw new Error('Invalid seed');
+// Derive keys from mnemonic using BIP39
+function deriveKeys(mnemonic) {
+  const seed = mnemonicToSeedSync(mnemonic);
+  const hdWallet = HDWallet.fromSeed(seed);
+  
+  if (hdWallet.type !== 'seedOk') {
+    throw new Error('Invalid seed');
+  }
   
   const result = hdWallet.hdWallet
     .selectAccount(0)
     .selectRoles([Roles.NightExternal])
     .deriveKeysAt(0);
   
-  if (result.type !== 'keysDerived') throw new Error('Key derivation failed');
+  if (result.type !== 'keysDerived') {
+    throw new Error('Key derivation failed');
+  }
   
   hdWallet.hdWallet.clear();
   return result.keys;
@@ -85,12 +91,15 @@ console.error(`Amount: ${amount} NIGHT`);
 console.error("");
 
 try {
-  // Convert mnemonic to seed (simplified)
-  const seed = Buffer.from(MNEMONIC.split(' ').map((w, i) => i.toString(16).padStart(2, '0')).join(''), 'hex');
-  
-  const keys = deriveKeys(seed);
+  // Derive keys from mnemonic
+  const keys = deriveKeys(MNEMONIC);
   const unshieldedKeystore = createKeystore(keys[Roles.NightExternal], NETWORK);
-  const senderAddress = unshieldedKeystore.getBech32Address();
+  
+  // SDK v2.1.0 returns a string, v3+ returns an object - handle both
+  const senderAddressObj = unshieldedKeystore.getBech32Address();
+  const senderAddress = typeof senderAddressObj === 'string' 
+    ? senderAddressObj 
+    : senderAddressObj.toString();
   
   console.error(`Sender: ${senderAddress}`);
   console.error("");

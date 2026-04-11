@@ -226,3 +226,101 @@ class IndexerClient:
                 msg = json.loads(raw)
                 if msg.get("type") == "data":
                     yield msg["payload"]["data"]
+
+    def get_transaction_status(self, tx_hash: str) -> dict:
+        """
+        Get transaction status from indexer.
+        
+        For local networks, queries the local node directly.
+        For remote networks, queries the indexer GraphQL API.
+        """
+        # For local networks, query the node directly
+        if self.network_id in ["undeployed", "local"]:
+            import requests
+            try:
+                # First try to get transaction by hash directly
+                response = requests.get(
+                    f"http://localhost:9944/tx/{tx_hash}",
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    tx = response.json()
+                    return {
+                        "hash": tx.get("hash", tx_hash),
+                        "status": tx.get("status", "unknown"),
+                        "block_number": tx.get("block_height"),
+                        "block_hash": tx.get("block_hash"),
+                        "timestamp": tx.get("timestamp"),
+                        "confirmed_at": tx.get("confirmed_at")
+                    }
+                
+                # If not found by hash, search in transactions list
+                # (transaction might be stored with different hash by node)
+                response = requests.get(
+                    "http://localhost:9944/transactions?limit=100",
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    for tx in data.get("transactions", []):
+                        # Check if this transaction's data contains our hash
+                        tx_data = tx.get("data", {})
+                        if tx_data.get("hash") == tx_hash:
+                            return {
+                                "hash": tx_hash,
+                                "status": tx.get("status", "unknown"),
+                                "block_number": tx.get("block_height"),
+                                "block_hash": tx.get("block_hash"),
+                                "timestamp": tx.get("timestamp"),
+                                "confirmed_at": tx.get("confirmed_at")
+                            }
+                
+                return {
+                    "hash": tx_hash,
+                    "status": "not_found",
+                    "error": "Transaction not found on local node"
+                }
+            except Exception as e:
+                return {
+                    "hash": tx_hash,
+                    "status": "error",
+                    "error": f"Failed to query local node: {e}"
+                }
+        
+        # For remote networks, query indexer
+        query = """
+        query GetTx($hash: String!) {
+            transaction(hash: $hash) {
+                hash
+                blockHeight
+                status
+            }
+        }
+        """
+        try:
+            response = self._http.post(
+                self.url,
+                json={"query": query, "variables": {"hash": tx_hash}},
+                headers={"Content-Type": "application/json"},
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if "data" in data and data["data"].get("transaction"):
+                    tx = data["data"]["transaction"]
+                    return {
+                        "hash": tx.get("hash", tx_hash),
+                        "status": tx.get("status", "unknown"),
+                        "block_number": tx.get("blockHeight", "pending")
+                    }
+        except Exception as e:
+            return {
+                "hash": tx_hash,
+                "status": "error",
+                "error": str(e)
+            }
+        
+        return {
+            "hash": tx_hash,
+            "status": "not_found",
+            "error": "Transaction not found in indexer"
+        }

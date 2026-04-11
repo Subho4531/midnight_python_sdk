@@ -20,9 +20,11 @@ Midnight uses a unique dual-token system designed for privacy and functionality:
 ### NIGHT Token
 
 **Properties:**
-- Native, unshielded (public) token
+- Native token of Midnight
 - **Transferable** between wallets
-- Visible on-chain (amounts are public)
+- Exists in two forms:
+  - **Unshielded NIGHT**: Public, visible on-chain
+  - **Shielded NIGHT**: Private, encrypted on-chain
 - Used for governance and staking
 - Generates DUST automatically when held
 
@@ -30,17 +32,17 @@ Midnight uses a unique dual-token system designed for privacy and functionality:
 - Governance voting
 - Staking for network security
 - Generating DUST for transaction fees
-- Public transfers between wallets
-- Shielded (private) transfers
+- Public transfers (unshielded)
+- Private transfers (shielded)
 
 ### DUST Token
 
 **Properties:**
-- Shielded resource token
+- Resource token for transaction fees
 - **Non-transferable** between wallets
+- **Unshielded (public)** - queryable from indexer
 - Generated automatically from NIGHT holdings
 - Used exclusively for transaction fees
-- Amounts are encrypted on-chain
 
 **Use Cases:**
 - Paying transaction fees

@@ -5,19 +5,25 @@ import pytest
 
 def test_generate_address_preprod():
     wallet = WalletClient()
-    addr = wallet.generate_address("test seed phrase", network="preprod")
-    assert addr.startswith("mn_preprod1")
+    # Use get_real_address which is the actual method
+    result = wallet.get_real_address("test seed phrase for wallet generation", network_id="preprod")
+    addr = result.get("address")
+    assert addr.startswith("mn_addr_preprod1")
     assert len(addr) > 20
 
 
 def test_generate_address_mainnet():
     wallet = WalletClient()
-    addr = wallet.generate_address("test seed phrase", network="mainnet")
-    assert addr.startswith("mn1")
+    result = wallet.get_real_address("test seed phrase for wallet generation", network_id="mainnet")
+    addr = result.get("address")
+    assert addr.startswith("mn_addr1")
 
 
 def test_generate_address_deterministic():
     wallet = WalletClient()
-    addr1 = wallet.generate_address("same seed", network="preprod")
-    addr2 = wallet.generate_address("same seed", network="preprod")
+    result1 = wallet.get_real_address("same seed phrase for deterministic test", network_id="preprod")
+    result2 = wallet.get_real_address("same seed phrase for deterministic test", network_id="preprod")
+    addr1 = result1.get("address")
+    addr2 = result2.get("address")
     assert addr1 == addr2
+

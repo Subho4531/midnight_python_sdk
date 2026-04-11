@@ -103,9 +103,44 @@ def tx_status(
         client = MidnightClient(network=profile_obj.name)
         status = client.indexer.get_transaction_status(tx_hash)
         
-        console.print(f"[cyan]TX Hash:[/cyan] {tx_hash}")
-        console.print(f"[cyan]Status:[/cyan] {status.get('status', 'unknown')}")
-        console.print(f"[cyan]Block:[/cyan] {status.get('block_number', 'pending')}")
+        console.print(f"\n[cyan]Transaction Status[/cyan]\n")
+        console.print(f"[dim]Hash:[/dim] {tx_hash}")
+        console.print(f"[dim]Network:[/dim] {profile_obj.network_id}")
+        
+        tx_status = status.get('status', 'unknown')
+        
+        # Color code status
+        if tx_status in ['confirmed', 'finalized']:
+            status_display = f"[green]{tx_status}[/green]"
+        elif tx_status == 'pending':
+            status_display = f"[yellow]{tx_status}[/yellow]"
+        elif tx_status in ['not_found', 'error']:
+            status_display = f"[red]{tx_status}[/red]"
+        else:
+            status_display = tx_status
+        
+        console.print(f"[dim]Status:[/dim] {status_display}")
+        
+        # Show block info if available
+        block = status.get('block_number') or status.get('block_height')
+        if block and block != 'pending':
+            console.print(f"[dim]Block:[/dim] {block}")
+        
+        # Show timestamp if available
+        if status.get('timestamp'):
+            console.print(f"[dim]Time:[/dim] {status['timestamp']}")
+        
+        # Show error if present
+        if status.get('error'):
+            console.print(f"\n[yellow]Note:[/yellow] {status['error']}")
+        
+        # For local networks, explain that transactions are simple balance updates
+        if profile_obj.network_id in ["undeployed", "local"] and tx_status == 'not_found':
+            console.print(f"\n[yellow]Local Network Note:[/yellow]")
+            console.print("Local network transfers are simple balance updates, not blockchain transactions.")
+            console.print("They don't appear in the explorer or transaction history.")
+            console.print("Use 'midnight balance' to verify the transfer completed.")
+        
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
